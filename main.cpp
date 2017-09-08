@@ -13,7 +13,7 @@
 
 #include <iostream>
 #include <fstream>
-#include <string>
+#include <string.h>
 #include <math.h>
 
 #define eV_cm 8065.540106923572
@@ -44,21 +44,28 @@ int CountLines(ifstream &f,auto &c)
 //
 // This function converts the X axis to nm
 //
-int ConvertXaxis(char *argv, double *xaxis, auto &c)
+int ConvertXaxis(int argc, char **argv, double *xaxis, auto &c)
 {
     char inp[512];
 
-    //Convert cm-1 to nm
-    sprintf(inp,"-cm-1");
-    if (argv == inp)
-    for (auto i=0;i<c;++i)
-        xaxis[i] = 1e7/xaxis[i];
+    for (auto i=1;i<argc;++i)
+    {
+        //Convert to cm-1
+        sprintf(inp,"-cm-1");
+        if (!strcmp(argv[i],inp))
+        {
+            cout << "here";
+            for (auto i=0;i<c;++i)
+                xaxis[i] = 1e7/xaxis[i];
+        }
 
-    //Convert eV to nm
-    sprintf(inp,"-eV");
-    if (argv == inp)
-        for (auto i=0;i<c;++i)
-            xaxis[i] = 1e7/(xaxis[i]*eV_cm);
+        //Convert eV to nm
+        sprintf(inp,"-eV");
+        if (!strcmp(argv[i],inp))
+            for (auto i=0;i<c;++i)
+                xaxis[i] = 1e7/(xaxis[i]*eV_cm);
+
+    }
 
     return 0;
 }
@@ -158,9 +165,9 @@ double Integrate(double *xaxis,double *p, auto &c)
 int ConverttoRBG(double X, double Y, double Z,
                  double &R, double &G, double &B)
 {
-    X /= Y;
-    Z /= Y;
-    Y /= Y;
+    X /= 100;
+    Z /= 100;
+    Y /= 100;
 
     R = X*3.2404542 + Y*-1.5371385 + Z*-0.4985312;
     G = X*-0.9692660 + Y*1.8760108 + Z*0.0415560;
@@ -312,10 +319,18 @@ int main(int argc, char **argv)
         f >> xaxis[i] >> yaxis[i];
 
     //If cm-1 or eV, convert the X axis to nm
-    ConvertXaxis(argv[2],xaxis,c);
+    ConvertXaxis(argc, argv,xaxis,c);
 
     //Normalize the Y axis
     NormalizeYaxis(yaxis,c);
+
+    //If the spectra is of absorption
+    char inp[512];
+    sprintf(inp,"-abs");
+    for (auto i=1;i<argc;++i)
+        if (!strcmp(argv[i],inp))
+            for (auto i=0;i<c;++i)
+                yaxis[i] = 1 - yaxis[i];
 
     //Create the corresponding color matching functions
     double cmf_x[c],cmf_y[c],cmf_z[c];
@@ -345,8 +360,8 @@ int main(int argc, char **argv)
     ConverttoHSL(R,G,B,H,S,L);
 
     //Convert to CMYK
-    double C,M,K;
-    ConverttoCMYK(R,G,B,C,M,Y,K);
+    double C,M,Yy,K;
+    ConverttoCMYK(R,G,B,C,M,Yy,K);
 
     /*for (auto i=0;i<c;++i)
         cout << xaxis[i] << "\t" << yaxis[i] << "\t" << pX[i] << "\t" << pY[i] << "\t" << pZ[i]
@@ -380,7 +395,7 @@ int main(int argc, char **argv)
     cout << "\nCMYK color space [0-1]:\n" << endl;
     cout << "\tC: " << C << endl;
     cout << "\tM: " << M << endl;
-    cout << "\tY: " << Y << endl;
+    cout << "\tY: " << Yy << endl;
     cout << "\tK: " << K << endl;
 
     return 0;
