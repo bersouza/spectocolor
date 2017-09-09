@@ -87,6 +87,26 @@ int NormalizeYaxis(double *yaxis, auto &c)
 }
 
 //
+// Generates a normalized black body radiation of temperature T
+// for illumination
+//
+int GenerateNormalizedBlackBodyRad(double *BBR,double *xaxis, double c, double T)
+{
+    //First, make the radiation
+    for (auto i=0;i<c;++i)
+        BBR[i] = ((2*6.62e-34*9e16)/pow(xaxis[i]*1e-9,5))/(exp((6.62e-34*3e8)/(xaxis[i]*1e-9*1.38e-23*T))-1);
+
+    double max=0;
+    for (auto i=0;i<c;++i)
+        max = BBR[i]>max?BBR[i]:max;
+
+    for (auto i=0;i<c;++i)
+        BBR[i] /= max;
+
+    return 0;
+}
+
+//
 // Gets the color matching function value for a given wavenumber in nm
 //
 double CMFX(double x)
@@ -326,11 +346,29 @@ int main(int argc, char **argv)
 
     //If the spectra is of absorption
     char inp[512];
+
+    //Define a temperature for the illuminant
+    double T=5500;
+    sprintf(inp,"-T");
+    for (auto i=1;i<argc;++i)
+        if (!strcmp(argv[i],inp))
+            T = atof(argv[i+1]);
+
     sprintf(inp,"-abs");
     for (auto i=1;i<argc;++i)
         if (!strcmp(argv[i],inp))
+        {
+            //Create the illuminant spectrum
+            double BBR[c];
+            GenerateNormalizedBlackBodyRad(BBR,xaxis,c,T);
             for (auto i=0;i<c;++i)
-                yaxis[i] = 1 - yaxis[i];
+            {
+                //Assume 100% absorbance at its maximum and excludes negatives
+                yaxis[i] = BBR[i] - yaxis[i];
+                if (yaxis[i] < 0)
+                    yaxis[i] = 0;
+            }
+        }
 
     //Create the corresponding color matching functions
     double cmf_x[c],cmf_y[c],cmf_z[c];
@@ -367,7 +405,8 @@ int main(int argc, char **argv)
         cout << xaxis[i] << "\t" << yaxis[i] << "\t" << pX[i] << "\t" << pY[i] << "\t" << pZ[i]
                 << "\t" << endl;
 
-    cout << X << " " << Y << " " << Z << endl;*/
+    cout << X << " " << Y << " " << Z << endl;
+    */
 
     //Print results
     cout << "Calculating the color from the spectra...\n" << endl;
